@@ -1,23 +1,26 @@
 name: CI
 
 on: workflow_dispatch
+env:
+  CACHE_IMAGE: hsahbus/demo
+  DOCKER_BUILDKIT: 1
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
+    
+    - name: Log in to docker hub
+      run: docker login -u ${{ secrets.REGISTRY_USER }} -p ${{ secrets.REGISTRY_PASS }}
+    - name: Build from dockerfile
+      run: |
+          docker build \
+            --cache-from $CACHE_IMAGE:latest \
+            --tag $CACHE_IMAGE:latest \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            "."
+    - name: Push to docker hub
+      run: docker push $CACHE_IMAGE:v1.0
 
-    # In this step, this action saves a list of existing images,
-    # the cache is created without them in the post run.
-    # It also restores the cache if it exists.
-    - uses: satackey/action-docker-layer-caching@v0.0.11
-      # Ignore the failure of a step and avoid terminating the job.
-      continue-on-error: true
-
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag my-image-name:latest
-
-    # Finally, "Post Run satackey/action-docker-layer-caching@v0.0.11",
-    # which is the process of saving the cache, will be executed.
+   
